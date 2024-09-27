@@ -4,17 +4,16 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Load and preprocess data
+# Load the data and perform clustering when the app starts
 data = pd.read_csv("anna_canteen.csv")
-data = data.drop("S.No", axis=1)
-kmeans = KMeans(n_clusters=5, random_state=42)
 pincodes = data[['PinCode']]
+kmeans = KMeans(n_clusters=5)  # Specify the number of clusters
 pincodes['Cluster'] = kmeans.fit_predict(pincodes[["PinCode"]])
 data_with_cluster = pd.merge(data, pincodes, on="PinCode")
 
 def nearby_canteen(zipcode):
     if len(str(zipcode)) != 6:
-        return {'error': 'Please enter a valid 6-digit pincode.'}
+        return "Please enter the right pincode."
 
     if zipcode in data_with_cluster["PinCode"].values:
         return data_with_cluster[data_with_cluster['PinCode'] == zipcode].to_dict(orient='records')
@@ -24,26 +23,31 @@ def nearby_canteen(zipcode):
             nearby_canteens = data_with_cluster[data_with_cluster["Cluster"] == pincode_cluster[0]]
             return nearby_canteens.to_dict(orient='records')
         else:
-            # Find the nearest canteen if no match found
+            print("No canteen found. Finding Nearest available canteen.")
             data_with_cluster['Distance'] = abs(data_with_cluster["PinCode"] - zipcode)
-            nearest_canteen = data_with_cluster.loc[data_with_cluster["Distance"].idxmin()]
+            nearest_canteen = data_with_cluster.loc[data_with_cluster['Distance'].idxmin()]
             return nearest_canteen.to_dict()
 
-@app.route('/nearby-canteen', methods=['POST'])
-def check_nearby_canteen():
-    data = request.json
-    zipcode = data.get('zipcode')
+@app.route('/nearby-canteen', methods=['GET'])
+def get_nearby_canteen():
+    # Get the zipcode from the query parameters
+    zipcode = request.args.get('zipcode', type=int)
 
     if not zipcode:
-        return jsonify({'error': 'zipcode is required'}), 400
+        return jsonify({"error": "Invalid or missing zipcode"}), 400
 
-    result = nearby_canteen(zipcode)
+    nearby_canten = nearby_canteen(zipcode)
+
+    if isinstance(nearby_canten, str):  # If the response is an error message
+        return jsonify({"message": nearby_canten}), 400
     
-    return jsonify(result)
+    # Extract district name for further processing
+    district_name = nearby_canten[0].get("District Name", "Unknown District") if isinstance(nearby_canten, list) else "Unknown District"
 
-@app.route('/ping')
-def ping():
-    return '<h1>Welcome to the Nearby Canteen Checker</h1>'
+    # Here you would call your external function, e.g., handle_district_catalog
+    # returan handle_district_catalog(recipient_id, district_name)
+
+    return jsonify(nearby_canten), 200
 
 if __name__ == '__main__':
     app.run(debug=True)
