@@ -7,12 +7,14 @@ app = Flask(__name__)
 # Load and preprocess data
 data = pd.read_csv("anna_canteen.csv")
 data = data.drop("S.No", axis=1)
+data['PinCode'] = data['PinCode'].astype(int)  # Ensure PinCode is treated as integers
+
 kmeans = KMeans(n_clusters=5, random_state=42)
 pincodes = data[['PinCode']]
-pincodes['Cluster'] = kmeans.fit_predict(pincodes[["PinCode"]])
+pincodes.loc[:, 'Cluster'] = kmeans.fit_predict(pincodes[["PinCode"]])
 data_with_cluster = pd.merge(data, pincodes, on="PinCode")
 
-def nearby_canteen(zipcode = 821104):
+def nearby_canteen(zipcode=821104):
     if len(str(zipcode)) != 6:
         return {'error': 'Please enter a valid 6-digit pincode.'}
 
