@@ -11,14 +11,19 @@ pincodes = data[['PinCode']]
 kmeans = KMeans(n_clusters=5)  # Specify the number of clusters
 pincodes['Cluster'] = kmeans.fit_predict(pincodes[["PinCode"]])
 data_with_cluster = pd.merge(data, pincodes, on="PinCode")
+
+
 data1 = pd.read_csv("Pincode_30052019.csv",encoding="ISO-8859-1")
-data1 = data.drop_duplicates(subset=["Pincode"])
+data1 = data1.drop_duplicates(subset=["Pincode"])
 
-pincode_dict = data.set_index('Pincode')[['Office Name', 'StateName', 'District', 'Division Name']].to_dict(orient='index')
+pincode_dict = data1.set_index('Pincode')[['Office Name', 'StateName', 'District', 'Division Name']].to_dict(orient='index')
 
-pincode_values = data[['Pincode']].values
+pincode_values = data1[['Pincode']].values
 
 knn_model = NearestNeighbors(n_neighbors=1).fit(pincode_values)
+
+
+
 
 def nearby_canteen(zipcode):
     if len(str(zipcode)) != 6:
@@ -74,6 +79,10 @@ def get_post_office_info():
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+
+
 @app.route('/nearby-canteen', methods=['GET'])
 def get_nearby_canteen():
     # Get the zipcode from the query parameters
